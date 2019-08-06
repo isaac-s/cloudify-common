@@ -177,6 +177,7 @@ class Function(object):
         self.path = path
         self.raw = raw
         self.parse_args(args)
+        # TODO: parse function identifier and save it as a member
 
     @abc.abstractmethod
     def parse_args(self, args):
@@ -658,6 +659,7 @@ class GetCapability(Function):
         return self.raw
 
     def evaluate_runtime(self, storage):
+        # TODO: pass the function identifier string here
         return storage.get_capability(self.capability_path)
 
 
