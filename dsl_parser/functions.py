@@ -654,6 +654,9 @@ class GetCapability(Function):
         pass
 
     def evaluate(self, plan):
+        # TODO: make sure to add the function identifier to the plan. Use an
+        #  annotation to enforce the design pattern to future inter-deployment
+        #  functions
         if 'operation' in self.context:
             self.context['operation']['has_intrinsic_functions'] = True
         return self.raw
