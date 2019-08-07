@@ -12,7 +12,14 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
-
+from dsl_parser.constants import (NODES,
+                                  INPUTS,
+                                  OUTPUTS,
+                                  POLICIES,
+                                  OPERATIONS,
+                                  PROPERTIES,
+                                  CAPABILITIES,
+                                  SCALING_GROUPS)
 
 NODE_TEMPLATE_SCOPE = 'node_template'
 NODE_TEMPLATE_RELATIONSHIP_SCOPE = 'node_template_relationship'
@@ -55,7 +62,7 @@ def scan_properties(value,
     :param replace: whether to do an in-place replacement or not.
     """
     if isinstance(value, dict):
-        for k, v in value.iteritems():
+        for k, v in value.items():
             current_path = '{0}.{1}'.format(path, k)
             result = handler(v, scope, context, current_path)
             _collect_secret(result)
@@ -81,24 +88,26 @@ def _scan_operations(operations,
                      context=None,
                      path='',
                      replace=False):
-    for name, definition in operations.iteritems():
-        if isinstance(definition, dict) and 'inputs' in definition:
+    for name, definition in operations.items():
+        if isinstance(definition, dict) and INPUTS in definition:
             context = context.copy() if context else {}
             context['operation'] = definition
-            scan_properties(definition['inputs'],
+            scan_properties(definition[INPUTS],
                             handler,
                             scope=scope,
                             context=context,
-                            path='{0}.{1}.inputs'.format(path, name),
+                            path='{0}.{1}.{2}'.format(path, name, INPUTS),
                             replace=replace)
 
 
 def scan_node_operation_properties(node_template, handler, replace=False):
-    _scan_operations(node_template['operations'],
+    _scan_operations(node_template[OPERATIONS],
                      handler,
                      scope=NODE_TEMPLATE_SCOPE,
                      context=node_template,
-                     path='{0}.operations'.format(node_template['name']),
+                     path='{0}.{1}.{2}'.format(NODES,
+                                               node_template['name'],
+                                               OPERATIONS),
                      replace=replace)
     for r in node_template.get('relationships', []):
         context = {'node_template': node_template, 'relationship': r}
@@ -106,15 +115,17 @@ def scan_node_operation_properties(node_template, handler, replace=False):
                          handler,
                          scope=NODE_TEMPLATE_RELATIONSHIP_SCOPE,
                          context=context,
-                         path='{0}.{1}'.format(node_template['name'],
-                                               r['type']),
+                         path='{0}.{1}.{2}'.format(NODES,
+                                                   node_template['name'],
+                                                   r['type']),
                          replace=replace)
         _scan_operations(r.get('target_operations', {}),
                          handler,
                          scope=NODE_TEMPLATE_RELATIONSHIP_SCOPE,
                          context=context,
-                         path='{0}.{1}'.format(node_template['name'],
-                                               r['type']),
+                         path='{0}.{1}.{2}'.format(NODES,
+                                                   node_template['name'],
+                                                   r['type']),
                          replace=replace)
 
 
@@ -123,51 +134,62 @@ def scan_service_template(plan, handler, replace=False, search_secrets=False):
     collect_secrets = search_secrets
 
     for node_template in plan.node_templates:
-        scan_properties(node_template['properties'],
+        scan_properties(node_template[PROPERTIES],
                         handler,
                         scope=NODE_TEMPLATE_SCOPE,
                         context=node_template,
-                        path='{0}.properties'.format(
-                            node_template['name']),
+                        path='{0}.{1}.{2}'.format(
+                            NODES,
+                            node_template['name'],
+                            PROPERTIES),
                         replace=replace)
-        for name, capability in node_template.get('capabilities', {}).items():
-            scan_properties(capability.get('properties', {}),
+        for name, capability in node_template.get(CAPABILITIES, {}).items():
+            scan_properties(capability.get(PROPERTIES, {}),
                             handler,
                             scope=NODE_TEMPLATE_SCOPE,
                             context=node_template,
-                            path='{0}.capabilities.{1}'.format(
+                            path='{0}.{1}.{2}.{3}'.format(
+                                NODES,
                                 node_template['name'],
+                                CAPABILITIES,
                                 name),
                             replace=replace)
         scan_node_operation_properties(node_template, handler, replace=replace)
-    for output_name, output in plan.outputs.iteritems():
+    for output_name, output in plan.outputs.items():
         scan_properties(output,
                         handler,
                         scope=OUTPUTS_SCOPE,
                         context=plan.outputs,
-                        path='outputs.{0}'.format(output_name),
+                        path='{0}.{1}'.format(OUTPUTS, output_name),
                         replace=replace)
-    for policy_name, policy in plan.get('policies', {}).items():
-        scan_properties(policy.get('properties', {}),
+    for policy_name, policy in plan.get(POLICIES, {}).items():
+        scan_properties(policy.get(PROPERTIES, {}),
                         handler,
                         scope=POLICIES_SCOPE,
                         context=policy,
-                        path='policies.{0}.properties'.format(policy_name),
+                        path='{0}.{1}.{2}'.format(
+                            POLICIES,
+                            policy_name,
+                            PROPERTIES),
                         replace=replace)
-    for group_name, scaling_group in plan.get('scaling_groups', {}).items():
-        scan_properties(scaling_group.get('properties', {}),
+    for group_name, scaling_group in plan.get(SCALING_GROUPS, {}).items():
+        scan_properties(scaling_group.get(PROPERTIES, {}),
                         handler,
                         scope=SCALING_GROUPS_SCOPE,
                         context=scaling_group,
-                        path='scaling_groups.{0}.properties'.format(
-                            group_name),
+                        path='{0}.{1}.{2}'.format(
+                            SCALING_GROUPS,
+                            group_name,
+                            PROPERTIES),
                         replace=replace)
-    for capability_name, capability in plan.get('capabilities', {}).items():
+    for capability_name, capability in plan.get(CAPABILITIES, {}).items():
         scan_properties(capability,
                         handler,
                         scope=CAPABILITIES_SCOPE,
                         context=capability,
-                        path='capabilities.{0}'.format(capability_name),
+                        path='{0}.{1}'.format(
+                            CAPABILITIES,
+                            capability_name),
                         replace=replace)
 
     if collect_secrets and len(secrets) > 0:

@@ -21,6 +21,10 @@ from functools import wraps
 from dsl_parser import (constants,
                         exceptions,
                         scan)
+from dsl_parser.constants import (OUTPUTS,
+                                  CAPABILITIES,
+                                  EVAL_FUNCS_PATH_PREFIX_KEY,
+                                  EVAL_FUNCS_PATH_DEFAULT_PREFIX)
 
 SELF = 'SELF'
 SOURCE = 'SOURCE'
@@ -177,7 +181,6 @@ class Function(object):
         self.path = path
         self.raw = raw
         self.parse_args(args)
-        # TODO: parse function identifier and save it as a member
 
     @abc.abstractmethod
     def parse_args(self, args):
@@ -654,9 +657,9 @@ class GetCapability(Function):
         pass
 
     def evaluate(self, plan):
-        # TODO: make sure to add the function identifier to the plan. Use an
-        #  annotation to enforce the design pattern to future inter-deployment
-        #  functions
+        # TODO: make sure to add the function identifier (self.path) to the
+        #  plan. Use an annotation to enforce the design pattern to future
+        #  inter-deployment functions
         if 'operation' in self.context:
             self.context['operation']['has_intrinsic_functions'] = True
         return self.raw
@@ -799,12 +802,14 @@ def evaluate_functions(payload, context,
                                          get_node_method,
                                          get_secret_method,
                                          get_capability_method)
-    scan.scan_properties(payload,
-                         handler,
-                         scope=None,
-                         context=context,
-                         path='payload',
-                         replace=True)
+    scan.scan_properties(
+        payload,
+        handler,
+        scope=None,
+        context=context,
+        path=context.pop(
+            EVAL_FUNCS_PATH_PREFIX_KEY, EVAL_FUNCS_PATH_DEFAULT_PREFIX),
+        replace=True)
     return payload
 
 
@@ -827,7 +832,7 @@ def evaluate_capabilities(capabilities,
     capabilities = dict((k, v['value']) for k, v in capabilities.items())
     return evaluate_functions(
         payload=capabilities,
-        context={},
+        context={EVAL_FUNCS_PATH_PREFIX_KEY: CAPABILITIES},
         get_node_instances_method=get_node_instances_method,
         get_node_instance_method=get_node_instance_method,
         get_node_method=get_node_method,
@@ -851,10 +856,11 @@ def evaluate_outputs(outputs_def,
     :param get_capability_method: A method for getting a capability.
     :return: Outputs dict.
     """
-    outputs = dict((k, v['value']) for k, v in outputs_def.iteritems())
+    outputs = dict((k, v['value']) for k, v in outputs_def.items())
     return evaluate_functions(
         payload=outputs,
-        context={'evaluate_outputs': True},
+        context={'evaluate_outputs': True,
+                 EVAL_FUNCS_PATH_PREFIX_KEY: OUTPUTS},
         get_node_instances_method=get_node_instances_method,
         get_node_instance_method=get_node_instance_method,
         get_node_method=get_node_method,
