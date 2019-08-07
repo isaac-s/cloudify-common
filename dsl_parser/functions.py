@@ -23,6 +23,7 @@ from dsl_parser import (constants,
                         scan)
 from dsl_parser.constants import (OUTPUTS,
                                   CAPABILITIES,
+                                  INTER_DEPLOYMENT_FUNCTIONS,
                                   EVAL_FUNCS_PATH_PREFIX_KEY,
                                   EVAL_FUNCS_PATH_DEFAULT_PREFIX)
 
@@ -657,9 +658,10 @@ class GetCapability(Function):
         pass
 
     def evaluate(self, plan):
-        # TODO: make sure to add the function identifier (self.path) to the
-        #  plan. Use an annotation to enforce the design pattern to future
-        #  inter-deployment functions
+        first_arg = self.capability_path[0]
+        deployment_id = None if is_function(first_arg) else first_arg
+        plan.setdefault(
+            INTER_DEPLOYMENT_FUNCTIONS, {})[self.path] = deployment_id
         if 'operation' in self.context:
             self.context['operation']['has_intrinsic_functions'] = True
         return self.raw
