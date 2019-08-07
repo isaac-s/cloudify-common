@@ -667,8 +667,7 @@ class GetCapability(Function):
         return self.raw
 
     def evaluate_runtime(self, storage):
-        # TODO: pass the function identifier string here
-        return storage.get_capability(self.capability_path)
+        return storage.get_capability(self.capability_path, self.path)
 
 
 @register(name='concat', func_eval_type=HYBRID_FUNC)
